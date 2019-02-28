@@ -10,9 +10,9 @@
 
         <key>ProgramArguments</key>
         <array>
-            <string>/bin/bash</string>
-            <string>-c</string>
-            <string>%SCRIPTPATH%</string>
+            <string>%SCRIPT_PATH%</string>
+            <string>-t</string>
+            <string>%TIMIDITY_PATH%</string>
         </array>
 
         <key>StandardErrorPath</key>

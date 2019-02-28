@@ -36,9 +36,13 @@ do_install() {
     [[ -f "./$plist" ]] || die "$plist: file not found"
     say "Copying to $dest_plist"
     cp "./$plist" "$dest_plist"
-    path="$(cd "$(dirname "$0")" && pwd)/minster.sh"
-    sed -i -e "s#%SCRIPTPATH%#$path#" "$dest_plist"
+    spath="$(cd "$(dirname "$0")" && pwd)/minster.sh"
+    tpath=$(command -v "timidity")
+    [[ -n "$tpath" ]] || die "could not find timidity"
+    sed -i -e "s#%SCRIPT_PATH%#$spath#" "$dest_plist"
+    sed -i -e "s#%TIMIDITY_PATH%#$tpath#" "$dest_plist"
     say "Loading $dest_plist"
+    launchctl unload "$dest_plist"
     launchctl load "$dest_plist"
     say "Success"
 }

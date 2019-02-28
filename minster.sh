@@ -6,7 +6,8 @@ prog=$(basename "$0")
 
 the_quarter=
 the_hour=
-midi_dir=$(cd "$(dirname "$0")" && pwd)/midi
+midi_dir="$(cd "$(dirname "$0")" && pwd)/midi"
+timidity_path=$(command -v "timidity" || true)
 
 say() {
     echo " * $*"
@@ -19,7 +20,7 @@ die() {
 
 usage() {
     cat <<EOS
-usage: $prog [-h] [-q QUARTER | -s HOUR | -S HOUR] [-m DIR]
+usage: $prog [-h] [-q QUARTER | -s HOUR | -S HOUR] [-m DIR] [-t PATH]
 
 plays Westminster chimes
 
@@ -32,11 +33,12 @@ options:
     -s HOUR     strike the hour (1-12)
     -S HOUR     chime 4th quarter and strike the hour (1-12)
     -m DIR      specify the MIDI directory
+    -t PATH     specify the path to timidity
 EOS
 }
 
 play_midi() {
-    timidity "$midi_dir/$1.midi" > /dev/null 2>&1
+    "$timidity_path" "$midi_dir/$1.midi" > /dev/null 2>/dev/null
 }
 
 chime_part() {
@@ -82,6 +84,14 @@ check_arguments() {
         die "$midi_dir: directory does not exist"
     fi
 
+    if [[ -x "$timidity_path" ]]; then
+        say "using timidity path $timidity_path"
+    elif [[ -z "$timidity_path" ]]; then
+        die "could not find timidity; specify it with -t"
+    else
+        die "$timidity_path: executable does not exist"
+    fi
+
     if [[ -n "$the_quarter" ]]; then
         if [[ "$the_quarter" -lt 1 && "$the_quarter" -gt 4 ]]; then
             die "$the_quarter: invalid quarter"
@@ -98,6 +108,8 @@ infer_from_time() {
     time=$(date +%r)
     hour=$(cut -d: -f1 <<< "$time")
     minute=$(cut -d: -f2 <<< "$time")
+    hour=${hour#0}
+    minute=${minute#0}
     if [[ "$minute" -eq 0 ]]; then
         the_quarter=4
         the_hour=$hour
@@ -135,13 +147,14 @@ main() {
     wait
 }
 
-while getopts "hq:s:S:m:" opt; do
+while getopts "hq:s:S:m:t:" opt; do
     case $opt in
         h) usage ; exit 0 ;;
         q) the_quarter=$OPTARG ;;
         s) the_hour=$OPTARG ;;
         S) the_quarter=4 ; the_hour=$OPTARG ;;
         m) midi_dir=$OPTARG ;;
+        t) timidity_path=$OPTARG ;;
         *) exit 1 ;;
     esac
 done
