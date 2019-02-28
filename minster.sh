@@ -4,9 +4,9 @@ set -eufo pipefail
 
 prog=$(basename "$0")
 
-force=false
-fix_quarter=
-fix_hour=
+the_quarter=
+the_hour=
+midi_dir=$(cd "$(dirname "$0")" && pwd)/midi
 
 say() {
     echo " * $*"
@@ -19,79 +19,117 @@ die() {
 
 usage() {
     cat <<EOS
-usage: $prog [-hf] [-b HOUR | -q QUARTER]
+usage: $prog [-h] [-q QUARTER | -s HOUR | -S HOUR] [-m DIR]
 
 plays Westminster chimes
 
+Without any options, checks the current times and chimes if it is HH:00, HH:15,
+HH:30, or HH:45. Otherwise, does nothing.
+
 options:
     -h          show this help message
-    -f          skip checks
-    -b HOUR     chime the given hour
-    -q QUARTER  chime the given quarter
+    -q QUARTER  chime the quarter (1-4)
+    -s HOUR     strike the hour (1-12)
+    -S HOUR     chime 4th quarter and strike the hour (1-12)
+    -m DIR      specify the MIDI directory
 EOS
 }
 
-check_should_chime() {
-    if ! [[ $(pmset -g ps | head -1) =~ "AC Power" ]]; then
-        die "not on AC power"
-    fi
+play_midi() {
+    timidity "$midi_dir/$1.midi" > /dev/null 2>&1
 }
 
-chime_hour() {
-    say "chiming hour $1"
+chime_part() {
+    play_midi "p$1"
+}
+
+chime_parts() {
+    for n in "$@"; do
+        chime_part $n &
+        if [[ "$n" == "${!#}" ]]; then
+            sleep 5
+        else
+            sleep 3
+        fi
+    done
 }
 
 chime_quarter() {
     say "chiming quarter $1"
+    case $1 in
+        1) chime_part 1 ;;
+        2) chime_parts 2 3 ;;
+        3) chime_parts 4 5 1 ;;
+        4) chime_parts 2 3 4 5 ;;
+        *) die "invalid quarter: $1" ;;
+    esac
 }
 
-main() {
-    if [[ "$force" == true ]]; then
-        say "force mode: skipping checks"
+strike_hour() {
+    say "striking hour $1"
+    count=$1
+    while [[ "$count" -gt 0 ]]; do
+        play_midi "hour" &
+        sleep 2
+        ((count--))
+    done
+}
+
+check_arguments() {
+    if [[ -d "$midi_dir" ]]; then
+        say "using MIDI dir $midi_dir"
     else
-        check_should_chime
+        die "$midi_dir: directory does not exist"
     fi
 
-    if [[ -n "$fix_quarter" && -n "$fix_hour" ]]; then
-        die "cannot chime both quarter and hour"
-    fi
-    if [[ -n "$fix_quarter" ]]; then
-        if [[ "$fix_quarter" -lt 1 && "$fix_quarter" -gt 3 ]]; then
-            die "invalid quarter: $fix_quarter"
+    if [[ -n "$the_quarter" ]]; then
+        if [[ "$the_quarter" -lt 1 && "$the_quarter" -gt 4 ]]; then
+            die "$the_quarter: invalid quarter"
         fi
-        chime_quarter "$fix_quarter"
-        exit 0
     fi
-    if [[ -n "$fix_hour" ]]; then
-        if [[ "$fix_hour" -lt 1 && "$fix_hour" -gt 12 ]]; then
-            die "invalid hour: $fix_hour"
+    if [[ -n "$the_hour" ]]; then
+        if [[ "$the_hour" -lt 1 || "$the_hour" -gt 12 ]]; then
+            die "$the_hour: invalid hour"
         fi
-        chime_hour "$fix_hour"
-        exit 0
     fi
+}
 
+infer_from_time() {
     time=$(date +%r)
     hour=$(cut -d: -f1 <<< "$time")
     minute=$(cut -d: -f2 <<< "$time")
     if [[ "$minute" -eq 0 ]]; then
-        chime_hour "$hour"
+        the_quarter=4
+        the_hour=$hour
     elif [[ "$minute" -eq 15 ]]; then
-        chime_quarter 1
+        the_quarter=1
     elif [[ "$minute" -eq 30 ]]; then
-        chime_quarter 2
+        the_quarter=2
     elif [[ "$minute" -eq 45 ]]; then
-        chime_quarter 3
+        the_quarter=3
     else
         die "invalid time: $time"
     fi
 }
 
-while getopts "hfb:q:" opt; do
+main() {
+    check_arguments
+    if [[ -z "$the_quarter" && -z "$the_hour" ]]; then
+        infer_from_time
+    fi
+
+    [[ -n "$the_quarter" ]] && chime_quarter "$the_quarter"
+    [[ -n "$the_hour" ]] && strike_hour "$the_hour"
+    wait
+}
+
+while getopts "hq:s:S:m:" opt; do
     case $opt in
         h) usage ; exit 0 ;;
-        f) force=true ;;
-        b) fix_quarter=$OPTARG ;;
-        b) fix_hour=$OPTARG ;;
+        q) the_quarter=$OPTARG ;;
+        s) the_hour=$OPTARG ;;
+        S) the_quarter=4 ; the_hour=$OPTARG ;;
+        m) midi_dir=$OPTARG ;;
         *) exit 1 ;;
     esac
 done

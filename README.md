@@ -19,7 +19,7 @@ Westminster chimes are based on (mostly) 5 permutations of 4 notes in E major:
 4. G, E, F, B
 5. B, F, G, E
 
-The bells chime with the following patterns:
+The bells chime as follows:
 
 1. First quarter: P1.
 2. Half hour: P2, P3.
