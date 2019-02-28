@@ -110,6 +110,18 @@ infer_from_time() {
     else
         die "invalid time: $time"
     fi
+
+    ident=$(date +"%Y-%m-%d.%H:%M")
+    data_dir=${XDG_DATA_HOME:-$HOME/.local/share}/minster
+    mkdir -p "$data_dir"
+    file="$data_dir/last"
+    if [[ -f "$file" ]]; then
+        content=$(< "$file")
+        if [[ "$ident" == "$content" ]]; then
+            die "skipping duplicate chime: entry $ident exists"
+        fi
+    fi
+    echo "$ident" > "$file"
 }
 
 main() {

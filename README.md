@@ -32,6 +32,14 @@ See the [Wikipedia article][wq] for more information.
 
 Minster uses [timidity][tm] to play MIDI files for the sounds. Those files can be edited in [Aria Maestosa][am], an open source MIDI editor. For each sound clip, there is an Aria file in the `aria/` folder and a MIDI file in the `midi/` folder.
 
+## Launchd
+
+When you install it with `install.sh`, Minster chimes automatically every quarter hour, scheduled by [launchd][ld]. According to the Apple documentation:
+
+> Unlike cron which skips job invocations when the computer is asleep, launchd will start the job the next time the computer wakes up. If multiple intervals transpire before the computer is woken, those events will be coalesced into one event upon wake from sleep.
+
+The `minster.sh` script is designed so that this behavior should never cause duplicate chimes.
+
 ## License
 
 © 2019 Mitchell Kember
@@ -42,3 +50,4 @@ Minster is available under the MIT License; see [LICENSE](LICENSE.md) for detail
 [wq]: https://en.wikipedia.org/wiki/Westminster_Quarters
 [tm]: http://timidity.sourceforge.net
 [am]: http://ariamaestosa.sourceforge.net
+[ld]: https://en.wikipedia.org/wiki/Launchd
