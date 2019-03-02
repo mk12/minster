@@ -2,12 +2,24 @@
 
 set -eufo pipefail
 
+# Globals
 prog=$(basename "$0")
+xdg_data_dir=${XDG_DATA_HOME:-$HOME/.local/share}/minster
+xdg_config_dir=${XDG_CONFIG_HOME:-$HOME/.config}/minster
 
+# Command-line options
 the_quarter=
 the_hour=
 midi_dir="$(cd "$(dirname "$0")" && pwd)/midi"
 timidity_path=$(command -v "timidity" || true)
+config_path="$xdg_config_dir/config.ini"
+explicit_config_path=false
+
+# Config options
+stop_music=false
+
+# Other globals
+music_state=
 
 say() {
     echo " * $*"
@@ -18,9 +30,16 @@ die() {
     exit 1
 }
 
+default() {
+    if [[ -n "${!1}" ]]; then
+        p=$(sed -e "s#^$HOME#~#" <<< "${!1}")
+        echo "(default: $p)"
+    fi
+}
+
 usage() {
     cat <<EOS
-usage: $prog [-h] [-q QUARTER | -s HOUR | -S HOUR] [-m DIR] [-t PATH]
+usage: $prog [-h] [-q QUARTER | -s HOUR | -S HOUR] [-m DIR] [-t PATH] [-c FILE]
 
 plays Westminster chimes
 
@@ -32,8 +51,9 @@ options:
     -q QUARTER  chime the quarter (1-4)
     -s HOUR     strike the hour (1-12)
     -S HOUR     chime 4th quarter and strike the hour (1-12)
-    -m DIR      specify the MIDI directory
-    -t PATH     specify the path to timidity
+    -m DIR      specify the MIDI directory $(default midi_dir)
+    -t PATH     specify the path to timidity $(default timidity_path)
+    -c FILE     specify the config file $(default config_path)
 EOS
 }
 
@@ -48,18 +68,14 @@ chime_part() {
 chime_parts() {
     for n in "$@"; do
         chime_part $n &
-        if [[ "$n" == "${!#}" ]]; then
-            sleep 5
-        else
-            sleep 3
-        fi
+        sleep 3
     done
 }
 
 chime_quarter() {
     say "chiming quarter $1"
     case $1 in
-        1) chime_part 1 ;;
+        1) chime_parts 1 ;;
         2) chime_parts 2 3 ;;
         3) chime_parts 4 5 1 ;;
         4) chime_parts 2 3 4 5 ;;
@@ -68,6 +84,7 @@ chime_quarter() {
 }
 
 strike_hour() {
+    [[ -n "$the_quarter" ]] && sleep 2
     say "striking hour $1"
     count=$1
     while [[ "$count" -gt 0 ]]; do
@@ -90,6 +107,10 @@ check_arguments() {
         die "could not find timidity; specify it with -t"
     else
         die "$timidity_path: executable does not exist"
+    fi
+
+    if [[ "$explicit_config_path" == true && ! -f "$config_path" ]]; then
+        die "$config_path: no such file"
     fi
 
     if [[ -n "$the_quarter" ]]; then
@@ -120,13 +141,12 @@ infer_from_time() {
     elif [[ "$minute" -eq 45 ]]; then
         the_quarter=3
     else
-        die "invalid time: $time"
+        die "$time: not a chiming time"
     fi
 
     ident=$(date +"%Y-%m-%d.%H:%M")
-    data_dir=${XDG_DATA_HOME:-$HOME/.local/share}/minster
-    mkdir -p "$data_dir"
-    file="$data_dir/last"
+    mkdir -p "$xdg_data_dir"
+    file="$xdg_data_dir/last"
     if [[ -f "$file" ]]; then
         content=$(< "$file")
         if [[ "$ident" == "$content" ]]; then
@@ -136,18 +156,63 @@ infer_from_time() {
     echo "$ident" > "$file"
 }
 
+stop_music() {
+    music_state=$(osascript -e 'tell application "iTunes" to get player state')
+    if [[ "$music_state" == "playing" ]]; then
+        say "pausing iTunes"
+        osascript <<EOS
+tell application "iTunes"
+    repeat with i from 1 to 20
+        set sound volume to 100 - (i * 5)
+        delay 0.05
+    end repeat
+    pause
+end tell
+EOS
+    fi
+}
+
+restore_music() {
+    sleep 2
+    if [[ "$music_state" == "playing" ]]; then
+        say "resuming iTunes"
+        osascript <<EOS
+tell application "iTunes"
+    play
+    repeat with i from 1 to 20
+        set sound volume to (i * 5)
+        delay 0.05
+    end repeat
+end tell
+EOS
+    fi
+}
+
+read_config() {
+    [[ -f "$config_path" ]] || return 0
+    say "reading config from $config_path"
+    while IFS="=" read -r name value; do
+        if [[ "$name" == "stop_music" ]]; then
+            stop_music=$value
+        fi
+    done < "$config_path"
+}
+
 main() {
     check_arguments
+    read_config
     if [[ -z "$the_quarter" && -z "$the_hour" ]]; then
         infer_from_time
     fi
 
+    [[ "$stop_music" == true ]] && stop_music
     [[ -n "$the_quarter" ]] && chime_quarter "$the_quarter"
     [[ -n "$the_hour" ]] && strike_hour "$the_hour"
+    [[ "$stop_music" == true ]] && restore_music
     wait
 }
 
-while getopts "hq:s:S:m:t:" opt; do
+while getopts "hq:s:S:m:t:c:" opt; do
     case $opt in
         h) usage ; exit 0 ;;
         q) the_quarter=$OPTARG ;;
@@ -155,6 +220,7 @@ while getopts "hq:s:S:m:t:" opt; do
         S) the_quarter=4 ; the_hour=$OPTARG ;;
         m) midi_dir=$OPTARG ;;
         t) timidity_path=$OPTARG ;;
+        c) config_path=$OPTARG ; explicit_config_path=true ;;
         *) exit 1 ;;
     esac
 done
