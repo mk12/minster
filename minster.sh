@@ -17,6 +17,7 @@ explicit_config_path=false
 
 # Config options
 stop_music=false
+volume_factor=100
 
 # Other globals
 music_state=
@@ -58,7 +59,8 @@ EOS
 }
 
 play_midi() {
-    "$timidity_path" "$midi_dir/$1.midi" > /dev/null 2>/dev/null
+    "$timidity_path" --volume "$volume_factor" "$midi_dir/$1.midi" \
+        > /dev/null 2>/dev/null
 }
 
 chime_part() {
@@ -194,6 +196,8 @@ read_config() {
     while IFS="=" read -r name value; do
         if [[ "$name" == "stop_music" ]]; then
             stop_music=$value
+        elif [[ "$name" == "volume_factor" ]]; then
+            volume_factor=$value
         fi
     done < "$config_path"
 }
