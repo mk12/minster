@@ -1,13 +1,24 @@
 # Minster
 
-Minster brings [Westminster chimes][wq] to your Mac. Like Big Ben. Or a grandfather clock.
+Minster brings [Westminster chimes][wq] to your computer. Like Big Ben. Or a grandfather clock.
 
 ## Usage
+
+For macOS, follow these steps:
 
 1. Clone the project.
 2. Install timidity with [Homebrew][hb]: `brew install timidity`.
 3. Manually play the chimes with `minster.sh`.
 4. Automate the chimes with `install.sh`.
+
+On Linux, it should work with some adjustments:
+
+- Install timidity manually or using a package manager (e.g., `sudo apt-get install timidity`).
+- Instead of `install.sh`, run `crontab -e` and add the following line using the absolute paths to `minster.sh` and the `timidity` binary:
+
+```
+*/15 * * * * /path/to/minster.sh -t /path/to/timidity
+```
 
 ## Chimes
 

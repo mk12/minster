@@ -72,6 +72,9 @@ do_uninstall() {
 }
 
 main() {
+    if [[ "($uname -s)" != "Darwin" ]]; then
+        die "This script is only for macOS"
+    fi
     "do_$action"
 }
 
