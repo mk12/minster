@@ -18,6 +18,7 @@ explicit_config_path=false
 # Config options
 stop_music=false
 volume_factor=100
+check_screen=false
 
 # Other globals
 music_state=
@@ -159,10 +160,18 @@ infer_from_time() {
 }
 
 stop_music() {
-    music_state=$(osascript -e 'tell application "iTunes" to get player state')
-    if [[ "$music_state" == "playing" ]]; then
-        say "pausing iTunes"
-        osascript <<EOS
+    itunes_open=$(osascript <<EOS
+tell application "System Events" to (name of processes) contains "iTunes"
+EOS
+    )
+    [[ "$itunes_open" == "true" ]] || return 0
+    music_state=$(osascript <<EOS
+tell application "iTunes" to get player state
+EOS
+    )
+    [[ "$music_state" == "playing" ]] || return 0
+    say "pausing iTunes"
+    osascript <<EOS
 tell application "iTunes"
     repeat with i from 1 to 20
         set sound volume to 100 - (i * 5)
@@ -171,12 +180,11 @@ tell application "iTunes"
     pause
 end tell
 EOS
-    fi
 }
 
 restore_music() {
-    sleep 2
     if [[ "$music_state" == "playing" ]]; then
+        sleep 2
         say "resuming iTunes"
         osascript <<EOS
 tell application "iTunes"
@@ -190,6 +198,16 @@ EOS
     fi
 }
 
+check_should_chime() {
+    if [[ "$check_screen" == true ]]; then
+        # https://apple.stackexchange.com/a/103346
+        val=$(ioreg -n IODisplayWrangler \
+            | grep -i IOPowerManagement \
+            | perl -pe 's/^.*DevicePowerState\"=([0-9]+).*$/\1/')
+        [[ "$val" == "0" ]] && die "screen is off" || :
+    fi
+}
+
 read_config() {
     [[ -f "$config_path" ]] || return 0
     say "reading config from $config_path"
@@ -198,6 +216,8 @@ read_config() {
             stop_music=$value
         elif [[ "$name" == "volume_factor" ]]; then
             volume_factor=$value
+        elif [[ "$name" == "check_screen" ]]; then
+            check_screen=$value
         fi
     done < "$config_path"
 }
@@ -206,6 +226,7 @@ main() {
     check_arguments
     read_config
     if [[ -z "$the_quarter" && -z "$the_hour" ]]; then
+        check_should_chime
         infer_from_time
     fi
 
