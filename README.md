@@ -4,20 +4,13 @@ Minster brings [Westminster chimes][wq] to your computer. Like Big Ben. Or a gra
 
 ## Usage
 
-For macOS, follow these steps:
-
 1. Clone the project.
-2. Install timidity with [Homebrew][hb]: `brew install timidity`.
+2. Install timidity (available on Homebrew and apt-get).
 3. Manually play the chimes with `minster.sh`.
-4. Automate the chimes with `install.sh`.
-
-On Linux, it should work with some adjustments:
-
-- Install timidity manually or using a package manager (e.g., `sudo apt-get install timidity`).
-- Instead of `install.sh`, run `crontab -e` and add the following line using the absolute paths to `minster.sh` and the `timidity` binary:
+4. Run `crontab -e` and add the following lines, using absolute paths:
 
 ```
-*/15 * * * * /path/to/minster.sh -t /path/to/timidity
+*/15 * * * * /path/to/minster.sh -t /path/to/timidity > /tmp/minster.log 2>&1
 ```
 
 ## Chimes
@@ -43,13 +36,33 @@ See the [Wikipedia article][wq] for more information.
 
 Minster uses [timidity][tm] to play MIDI files for the sounds. Those files can be edited in [Aria Maestosa][am], an open source MIDI editor. For each sound clip, there is an Aria file in the `aria/` folder and a MIDI file in the `midi/` folder.
 
+## Configuration
+
+Minster reads configuration from `~/.config/minster/config.ini`. There are three options:
+
+```ini 
+volume_factor=125  # play chimes at 125% current volume
+stop_music=true    # (macOS only) fade iTunes music out while chiming
+check_screen=true  # (macOS only) check if the display is on before chiming
+```
+
+## Troubleshooting
+
+If the cron job isn't working, check `/tmp/minster.log`, and try adding `set -x` to the top of `minster.sh` to make it log every command. If it can't find programs, try adding this to the top of your crontab file:
+
+```
+PATH=$PATH:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin
+```
+
+Note that on macOS, you may see a pop up window asking for permissions. You need to grant these permissions for Minster to work.
+
 ## Launchd
 
-When you install it with `install.sh`, Minster chimes automatically every quarter hour, scheduled by [launchd][ld]. According to the Apple documentation:
+As an alternative to cron, on macOS you can run `install.sh` to install a [launchd][ld] job . According to the Apple documentation:
 
 > Unlike cron which skips job invocations when the computer is asleep, launchd will start the job the next time the computer wakes up. If multiple intervals transpire before the computer is woken, those events will be coalesced into one event upon wake from sleep.
 
-The `minster.sh` script is designed so that this behavior should never cause duplicate chimes.
+The `minster.sh` script is designed so that this behavior usually doesn't cause duplicate chimes, but it's not perfect.
 
 ## License
 
@@ -57,7 +70,6 @@ The `minster.sh` script is designed so that this behavior should never cause dup
 
 Minster is available under the MIT License; see [LICENSE](LICENSE.md) for details.
 
-[hb]: https://brew.sh
 [wq]: https://en.wikipedia.org/wiki/Westminster_Quarters
 [tm]: http://timidity.sourceforge.net
 [am]: http://ariamaestosa.sourceforge.net
