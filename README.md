@@ -51,7 +51,7 @@ check_screen=true  # (macOS only) check if the display is on before chiming
 If the cron job isn't working, check `/tmp/minster.log`, and try adding `set -x` to the top of `minster.sh` to make it log every command. If it can't find programs, try adding this to the top of your crontab file:
 
 ```
-PATH=$PATH:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin
 ```
 
 Note that on macOS, you may see a pop up window asking for permissions. You need to grant these permissions for Minster to work.

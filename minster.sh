@@ -129,6 +129,7 @@ check_arguments() {
 }
 
 infer_from_time() {
+    say "current time: $(date)"
     time=$(date +%r)
     hour=$(cut -d: -f1 <<< "$time")
     minute=$(cut -d: -f2 <<< "$time")
