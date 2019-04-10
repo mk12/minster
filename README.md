@@ -38,12 +38,16 @@ Minster uses [timidity][tm] to play MIDI files for the sounds. Those files can b
 
 ## Configuration
 
-Minster reads configuration from `~/.config/minster/config.ini`. There are three options:
+Minster reads configuration from `~/.config/minster/config.ini`. There are a few options:
 
 ```ini 
 volume_factor=125  # play chimes at 125% current volume
 stop_music=true    # (macOS only) fade iTunes music out while chiming
 check_screen=true  # (macOS only) check if the display is on before chiming
+
+# Specify the instrument. The optiona are tubular (default), piano, brpiano,
+harpsichord, # xylophone, harp, ocarina, and random.
+instrument=tubular
 ```
 
 ## Troubleshooting

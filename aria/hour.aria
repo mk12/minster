@@ -18,9 +18,9 @@
 
 <track name="Untitled" id="0" channel="0" muted="false" soloed="false" volume="100" default_volume="80">
   <key type="sharps" value="4" />
-  <editors height="534">
+  <editors height="128">
     <score enabled="false" musical_notation="true" linear_notation="true" g_clef="true" f_clef="true" scroll="0.547945"/>
-    <keyboard enabled="true" scroll="0.720000" proportion="1.000000"/>
+    <keyboard enabled="true" scroll="0.666667" proportion="1.000000"/>
     <guitar enabled="false"/>
     <drum enabled="false" scroll="0.000000"/>
     <controller enabled="false" controller="7"/>
@@ -30,9 +30,7 @@
   <drumkit id="0" collapseView="false"/>
   <guitartuning  string0="67" string1="72" string2="76" string3="81" string4="86" string5="91"/>
 
-  <note pitch="79" start="0" end="1536" volume="90"/>
-  <controlevent type="203" tick="0" value="14.00000000"/>
-  <controlevent type="7" tick="0" value="27.00000000"/>
+  <note pitch="79" start="0" end="1536" volume="90" fret="2" string="3" selected="true"/>
 </track>
 
 </sequence></seqview>

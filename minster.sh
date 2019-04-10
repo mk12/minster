@@ -19,9 +19,24 @@ explicit_config_path=false
 stop_music=false
 volume_factor=100
 check_screen=false
+instrument="tubular"
 
 # Other globals
 music_state=
+instrument_code=
+
+instrument_names=(
+    "piano"
+    "brpiano"
+    "harpsichord"
+    "xylophone"
+    "tubular"
+    "harp"
+    "ocarina"
+)
+
+# http://fmslogo.sourceforge.net/manual/midi-instrument.html
+instrument_codes=("00" "01" "06" "0d" "0e" "2e" "4f")
 
 say() {
     echo " * $*"
@@ -42,6 +57,7 @@ default() {
 usage() {
     cat <<EOS
 usage: $prog [-h] [-q QUARTER | -s HOUR | -S HOUR] [-m DIR] [-t PATH] [-c FILE]
+             [-i instrument]
 
 plays Westminster chimes
 
@@ -56,12 +72,19 @@ options:
     -m DIR      specify the MIDI directory $(default midi_dir)
     -t PATH     specify the path to timidity $(default timidity_path)
     -c FILE     specify the config file $(default config_path)
+    -i NAME     specify the instrument to use
 EOS
 }
 
 play_midi() {
-    "$timidity_path" --volume "$volume_factor" "$midi_dir/$1.midi" \
-        > /dev/null 2>/dev/null
+    if [[ "$instrument" == "tubular" ]]; then
+        "$timidity_path" --volume "$volume_factor" "$midi_dir/$1.midi" \
+            > /dev/null 2>/dev/null
+    else
+        xxd -g1 "$midi_dir/$1.midi" | sed "s/0e/$instrument_code/" \
+            | xxd -r | "$timidity_path" --volume "$volume_factor" - \
+            > /dev/null 2>/dev/null
+    fi
 }
 
 chime_part() {
@@ -219,13 +242,34 @@ read_config() {
             volume_factor=$value
         elif [[ "$name" == "check_screen" ]]; then
             check_screen=$value
+        elif [[ "$name" == "instrument" ]]; then
+            instrument=$value
         fi
     done < "$config_path"
 }
 
+set_instrument_code() {
+    if [[ "$instrument" == "random" ]]; then
+        i=$((RANDOM % ${#instrument_names[@]}))
+        instrument=${instrument_names[$i]}
+        instrument_code=${instrument_codes[$i]}
+        say "chose random instrument '$instrument' ($instrument_code)"
+        return
+    fi
+    for i in "${!instrument_names[@]}"; do
+        if [[ "${instrument_names[$i]}" == "$instrument" ]]; then
+            instrument_code="${instrument_codes[$i]}"
+            say "using instrument '$instrument' ($instrument_code)"
+            return
+        fi
+    done
+    die "$instrument: invalid instrument"
+}
+
 main() {
-    check_arguments
     read_config
+    check_arguments
+    set_instrument_code
     if [[ -z "$the_quarter" && -z "$the_hour" ]]; then
         check_should_chime
         infer_from_time
@@ -238,7 +282,7 @@ main() {
     wait
 }
 
-while getopts "hq:s:S:m:t:c:" opt; do
+while getopts "hq:s:S:m:t:c:i:" opt; do
     case $opt in
         h) usage ; exit 0 ;;
         q) the_quarter=$OPTARG ;;
@@ -247,6 +291,7 @@ while getopts "hq:s:S:m:t:c:" opt; do
         m) midi_dir=$OPTARG ;;
         t) timidity_path=$OPTARG ;;
         c) config_path=$OPTARG ; explicit_config_path=true ;;
+        i) instrument=$OPTARG ;;
         *) exit 1 ;;
     esac
 done
