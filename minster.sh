@@ -19,7 +19,7 @@ explicit_config_path=false
 stop_music=false
 volume_factor=100
 check_screen=false
-instrument="tubular"
+instrument="default"
 
 # Other globals
 music_state=
@@ -32,11 +32,19 @@ instrument_names=(
     "xylophone"
     "tubular"
     "harp"
-    "ocarina"
+    # "ocarina"
 )
 
 # http://fmslogo.sourceforge.net/manual/midi-instrument.html
-instrument_codes=("00" "01" "06" "0d" "0e" "2e" "4f")
+instrument_codes=(
+    "00"
+    "01"
+    "06"
+    "0d"
+    "0e"
+    "2e"
+    # "4f"
+)
 
 say() {
     echo " * $*"
@@ -184,19 +192,19 @@ infer_from_time() {
 }
 
 stop_music() {
-    itunes_open=$(osascript <<EOS
-tell application "System Events" to (name of processes) contains "iTunes"
+    music_open=$(osascript <<EOS
+tell application "System Events" to (name of processes) contains "Music"
 EOS
     )
-    [[ "$itunes_open" == "true" ]] || return 0
+    [[ "$music_open" == "true" ]] || return 0
     music_state=$(osascript <<EOS
-tell application "iTunes" to get player state
+tell application "Music" to get player state
 EOS
     )
     [[ "$music_state" == "playing" ]] || return 0
-    say "pausing iTunes"
+    say "pausing Music"
     osascript <<EOS
-tell application "iTunes"
+tell application "Music"
     repeat with i from 1 to 20
         set sound volume to 100 - (i * 5)
         delay 0.05
@@ -209,9 +217,9 @@ EOS
 restore_music() {
     if [[ "$music_state" == "playing" ]]; then
         sleep 2
-        say "resuming iTunes"
+        say "resuming Music"
         osascript <<EOS
-tell application "iTunes"
+tell application "Music"
     play
     repeat with i from 1 to 20
         set sound volume to (i * 5)
@@ -242,13 +250,16 @@ read_config() {
             volume_factor=$value
         elif [[ "$name" == "check_screen" ]]; then
             check_screen=$value
-        elif [[ "$name" == "instrument" ]]; then
+        elif [[ "$name" == "instrument" && "$instrument" == "default" ]]; then
             instrument=$value
         fi
     done < "$config_path"
 }
 
 set_instrument_code() {
+    if [[ "$instrument" == "default" ]]; then
+        instrument="tubular"
+    fi
     if [[ "$instrument" == "random" ]]; then
         i=$((RANDOM % ${#instrument_names[@]}))
         instrument=${instrument_names[$i]}
@@ -267,8 +278,8 @@ set_instrument_code() {
 }
 
 main() {
-    read_config
     check_arguments
+    read_config
     set_instrument_code
     if [[ -z "$the_quarter" && -z "$the_hour" ]]; then
         check_should_chime
